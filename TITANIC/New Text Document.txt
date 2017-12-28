@@ -1,0 +1,227 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+import numpy as np
+from matplotlib import pyplot
+from pandas import read_csv
+from pandas import set_option
+import pandas as pd
+from pandas.tools.plotting import scatter_matrix
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.preprocessing import Imputer
+
+Data = '//root/train.csv'
+dataset = read_csv(Data)
+
+from xgboost import XGBClassifier
+
+
+dataset = dataset.drop('PassengerId', axis=1)
+
+dataset = dataset.drop('Name', axis=1)
+
+
+
+dataset['Sex'] = dataset['Sex'].map( {'female': 1, 'male': 0} ).astype(int)
+
+
+dataset['Embarked'] = dataset['Embarked'].map( {'S': 0, 'C': 1, 'Q': 2 } )
+
+   
+dataset.loc[ dataset['Age'] <= 16, 'Age'] = 0
+dataset.loc[(dataset['Age'] > 16) & (dataset['Age'] <= 32), 'Age'] = 1
+dataset.loc[(dataset['Age'] > 32) & (dataset['Age'] <= 48), 'Age'] = 2
+dataset.loc[(dataset['Age'] > 48) & (dataset['Age'] <= 64), 'Age'] = 3
+dataset.loc[ dataset['Age'] > 64, 'Age'] = 4
+
+
+
+dataset1 = dataset['Ticket'].str.extract('(\s\d+)') 
+
+dataset2 =  dataset['Ticket'].str.extract('(\d*)') 
+
+
+dataset_ticket = pd.concat([dataset1, dataset2], axis=1)
+
+dataset_ticket = dataset1.combine_first(dataset2)
+
+dataset_ticket = dataset_ticket.str.strip()
+
+dataset_ticket = dataset_ticket.replace(r'\s+',np.nan,regex=True).replace('',np.nan)
+
+dataset['Fare'] = dataset['Fare'].round()
+#dataset = dataset.drop('Pclass', axis=1)
+#dataset = dataset.drop('Age', axis=1)
+
+dataset = dataset.drop('Ticket', axis=1)
+
+dataset = dataset.drop('Cabin', axis=1)
+
+X = dataset.iloc[:,1 : ].values
+
+Y = dataset.iloc[:,0].values
+
+from sklearn.preprocessing import Imputer
+imputer = Imputer(missing_values = 'NaN', strategy = 'median', axis = 0)
+imputer = imputer.fit(X)
+X = imputer.transform(X)
+
+
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.25, random_state = 0)
+
+
+classifier = XGBClassifier(colsample_bytree=0.75,
+ gamma= 0.2,
+ learning_rate= 0.1,
+max_depth= 4,
+ min_child_weight= 1,
+ reg_alpha= 0.01,
+ subsample=0.85)
+classifier.fit(X_train, y_train)
+
+from sklearn.feature_selection import RFE
+rfe = RFE(classifier, 4)
+fit = rfe.fit(X, Y)
+print("Num Features: %d" % fit.n_features_)
+print("Selected Features: %s" % fit.support_)
+print("Feature Ranking: %s" % fit.ranking_)
+
+
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+test = SelectKBest(score_func=chi2, k=4)
+fit = test.fit(X, Y)
+# summarize scores
+print(fit.scores_)
+features = fit.transform(X)
+# summarize selected features
+
+
+
+
+
+from sklearn.preprocessing import StandardScaler
+sc_X = StandardScaler()
+X_train = sc_X.fit_transform(X_train)
+X_test = sc_X.transform(X_test)
+
+
+
+y_pred = classifier.predict(X_test)
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(y_test, y_pred)
+
+
+
+#from sklearn.model_selection import cross_val_score
+#accuracies = cross_val_score(estimator = classifier, X = X_train, y = y_train, cv = 10)
+#accuracies.mean()
+#accuracies.std()
+
+#from sklearn.model_selection import GridSearchCV
+#parameters = [{'learning_rate': [0.1,0.2,0.3,0.4,0.5], 'max_depth' :range(3,10,2) ,
+#'max_depth':[4,5,6],'min_child_weight':[4,5,6],'min_child_weight':[6,8,10,12],
+#'gamma':[i/10.0 for i in range(0,5)],'subsample':[i/10.0 for i in range(6,10)],
+#'colsample_bytree':[i/10.0 for i in range(6,10)],'subsample':[i/100.0 for i in range(75,90,5)],
+#'colsample_bytree':[i/100.0 for i in range(75,90,5)],'reg_alpha':[1e-5, 1e-2, 0.1, 1, 100],
+#'min_child_weight':range(1,6,2) }]
+#grid_search = GridSearchCV(estimator = classifier,
+#                           param_grid = parameters,
+#                           scoring = 'roc_auc',
+#                           cv = 10,
+#                           n_jobs = -1)
+#grid_search = grid_search.fit(X_train, y_train)
+#best_accuracy = grid_search.best_score_
+#best_parameters = grid_search.best_params_
+
+
+Data1= '/root/test.csv'
+dataset1 = read_csv(Data1)
+
+
+
+
+
+dataset1 = dataset1.drop('Name', axis=1)
+
+
+
+dataset1['Sex'] = dataset1['Sex'].map( {'female': 1, 'male': 0} ).astype(int)
+
+
+dataset1['Embarked'] = dataset1['Embarked'].map( {'S': 0, 'C': 1, 'Q': 2 } )
+
+   
+dataset1.loc[ dataset1['Age'] <= 16, 'Age'] = 0
+dataset1.loc[(dataset1['Age'] > 16) & (dataset1['Age'] <= 32), 'Age'] = 1
+dataset1.loc[(dataset1['Age'] > 32) & (dataset1['Age'] <= 48), 'Age'] = 2
+dataset1.loc[(dataset1['Age'] > 48) & (dataset1['Age'] <= 64), 'Age'] = 3
+dataset1.loc[ dataset1['Age'] > 64, 'Age'] = 4
+
+
+
+dataset11 = dataset1['Ticket'].str.extract('(\s\d+)') 
+
+dataset12 =  dataset1['Ticket'].str.extract('(\d*)') 
+
+
+dataset1_ticket = pd.concat([dataset11, dataset12], axis=1)
+
+dataset1_ticket = dataset11.combine_first(dataset12)
+
+dataset1_ticket = dataset1_ticket.str.strip()
+
+dataset1_ticket = dataset1_ticket.replace(r'\s+',np.nan,regex=True).replace('',np.nan)
+
+dataset1['Fare'] = dataset1['Fare'].round()
+#dataset1 = dataset1.drop('Pclass', axis=1)
+#dataset1 = dataset1.drop('Age', axis=1)
+
+dataset1 = dataset1.drop('Ticket', axis=1)
+
+dataset1 = dataset1.drop('Cabin', axis=1)
+
+X1 = dataset1.iloc[:,1 : ].values
+
+
+
+from sklearn.preprocessing import Imputer
+imputer = Imputer(missing_values = 'NaN', strategy = 'median', axis = 0)
+imputer = imputer.fit(X1)
+X1 = imputer.transform(X1)
+
+passinger_id= dataset1['PassengerId']
+
+dataset1 = dataset1.drop('PassengerId', axis=1)
+
+result = classifier.predict(X1)
+print(result)
+
+result = pd.DataFrame(result)
+
+Final_output = pd.concat([passinger_id, result], axis=1)
+
+Final_output.to_csv("/root/Submission_Titanic.csv", index=False)
